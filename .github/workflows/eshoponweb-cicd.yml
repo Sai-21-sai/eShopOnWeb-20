@@ -1,4 +1,4 @@
-name: eShopOnWeb Build and Test
+name: eShopOnWeb Build and Deploy
 
 on:
   - push
@@ -6,10 +6,8 @@ on:
 
 env:
   RESOURCE_GROUP: rg-eshoponweb-Sai-20
-  LOCATION: EastUS
-  TEMPLATE_FILE: infra/webapp.bicep
-  SUBSCRIPTION_ID: 5d68deeb-2601-4c10-93c9-071ebde0791a 
   WEBAPP_NAME: eshoponweb-webapp51635062
+  DOTNET_VERSION: '8.0.x'
 
 jobs:
   buildandtest:
@@ -21,7 +19,7 @@ jobs:
       - name: Setup .NET SDK
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: ${{ env.DOTNET_VERSION }}
           dotnet-quality: 'preview'
 
       - name: Restore dependencies
@@ -45,12 +43,6 @@ jobs:
           name: .net-app
           path: app.zip
 
-      - name: Upload Bicep template
-        uses: actions/upload-artifact@v4
-        with:
-          name: bicep-template
-          path: ${{ env.TEMPLATE_FILE }}
-
   deploy:
     runs-on: ubuntu-latest
     needs: buildandtest
@@ -63,28 +55,10 @@ jobs:
           name: .net-app
           path: .net-app
 
-      - name: Download Bicep template
-        uses: actions/download-artifact@v4
-        with:
-          name: bicep-template
-          path: bicep-template
-
       - name: Azure Login
         uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-      - name: Deploy Infrastructure with Bicep
-        uses: azure/arm-deploy@v2
-        with:
-          subscriptionId: ${{ env.SUBSCRIPTION_ID }}
-          resourceGroupName: ${{ env.RESOURCE_GROUP }}
-          template: bicep-template/webapp.bicep
-          parameters: 'webAppName=${{ env.WEBAPP_NAME }} location=${{ env.LOCATION }}'
-          failOnStdErr: false
-
-      - name: Sleep for stabilization (to avoid deployment race condition)
-        run: sleep 30
 
       - name: Deploy Website to Azure WebApp using CLI
         uses: Azure/cli@v2
